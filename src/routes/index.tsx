@@ -1,48 +1,42 @@
-import * as fs from 'node:fs'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-
-const filePath = 'count.txt'
-
-async function readCount() {
-  return parseInt(
-    await fs.promises.readFile(filePath, 'utf-8').catch(() => '0'),
-  )
-}
-
-const getCount = createServerFn({
-  method: 'GET',
-}).handler(() => {
-  return readCount()
-})
-
-const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
-  .handler(async ({ data }) => {
-    const count = await readCount()
-    await fs.promises.writeFile(filePath, `${count + data}`)
-  })
+import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
+import { ContactList, ContactForm, getContacts } from '../features/contacts';
+import { Header } from '../components/ui/Header';
+import { Button } from '../components/ui/Button';
+import { Modal } from '~/components/ui/Modal';
 
 export const Route = createFileRoute('/')({
   component: Home,
-  loader: async () => await getCount(),
-})
+  loader: async () => await getContacts(),
+});
 
 function Home() {
-  const router = useRouter()
-  const state = Route.useLoaderData()
+  const contacts = Route.useLoaderData();
+  const [showAddForm, setShowAddForm] = useState(false);
 
   return (
-    <button
-      type="button"
-      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-      onClick={() => {
-        updateCount({ data: 1 }).then(() => {
-          router.invalidate()
-        })
-      }}
-    >
-      Add 1 to {state}?
-    </button>
-  )
+    <div className="min-h-screen bg-neutral-100">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Header 
+          title="Contacts"
+          rightElement={
+            <Button 
+              variant="text" 
+              onClick={() => setShowAddForm(true)}
+            >
+              Add
+            </Button>
+          }
+        />
+
+        <div className="py-4">
+          <ContactList contacts={contacts} />
+        </div>
+      </div>
+
+      <Modal isOpen={showAddForm} onClose={() => setShowAddForm(false)} title="New Contact">
+        <ContactForm onSubmit={() => setShowAddForm(false)} />
+      </Modal>
+    </div>
+  );
 }
